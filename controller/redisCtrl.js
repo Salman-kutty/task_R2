@@ -17,7 +17,7 @@ const error = {
 redisClient.connect()
     .then(() => console.log("Redis is connected ..."))
     .catch((err) => console.log("Error while connecting redis ...", err))
-//redisClient.flushAll();
+
 const postData = async (req, res) => {
     let postkey;
     try {
@@ -28,14 +28,14 @@ const postData = async (req, res) => {
                 console.log("Many Data is inserted..");
                 data = await redisData.bulkCreate(body);
                 for (let i = 0; i < data.length; i++) {
-                    postkey = `#id:${data[i].id}#${data[i].name}#${data[i].age}`;
-                    await redisClient.set(postkey, JSON.stringify(single));
+                    postkey = `${data[i].id}-${data[i].name}-${data[i].age}`;
+                    await redisClient.set(postkey, JSON.stringify(data[i]));
                 }
 
             } else {
                 console.log("One data is inserted..");
                 data = await redisData.create(body);
-                postkey = `#id:${data.id}#name:${data.name}#age:${data.age}`;
+                postkey = `${data.id}-${data.name}-${data.age}`;
                 await redisClient.set(postkey, JSON.stringify(data));
 
             }
@@ -54,7 +54,7 @@ const postData = async (req, res) => {
 const deleteData = async (req, res) => {
     try {
         let id = req.params.id;
-        let deletingData = await redisClient.keys(`*id:${id}*`)
+        let deletingData = await redisClient.keys(`${id}-*`)
         if (deletingData) {
             await redisClient.del(deletingData[0]);
         }
@@ -72,14 +72,14 @@ const updateData = async (req, res) => {
         const id = req.params.id;
         const body = req.body;
         let key;
-        let deletingData = await redisClient.keys(`*id:${id}*`)
+        let deletingData = await redisClient.keys(`${id}-*`)
         if (deletingData) {
             await redisClient.del(deletingData[0]);
         }
         const data = await redisData.update(body, { where: { id: Number(id) } });
         const data1 = await redisData.findByPk(Number(id));
-        key = `#id:${data1.id}#name:${data1.name}#age:${data1.age}`
-        redisClient.set(key, JSON.stringify(data1));
+        key = `${data1.id}-${data1.name}-${data1.age}`
+        await redisClient.set(key, JSON.stringify(data1));
         response.Response = data;
         res.status(200).json(response)
     } catch (err) {
@@ -87,179 +87,201 @@ const updateData = async (req, res) => {
         res.status(400).json(error)
     }
 }
-const getAllData = async (req, res) => {
+// const getOneData = async (req, res) => {
+//     try {
+//         let paramData = req.query;
+//         let bodyData = req.body;
+//         let data, key, dataArr;
+//         if (Object.keys(bodyData).length === 0) {
+//             if (paramData.name || paramData.id) {
+//                 console.log("Goinng single..")
+//                 dataArr = await searchBySingleData(paramData, bodyData);
+//             }
+//         } else if (Object.keys(bodyData).length !== 0) {
+//             if (Object.keys(paramData).length === 0) {
+//                 console.log("Only body")
+//                 dataArr = await searchBySingleData(paramData, bodyData);
+//             } else {
+//                 console.log("Body & param")
+//                 dataArr = await searchByTwoParameter(paramData, bodyData);
+//             }
+//         }
+
+//         console.log("33333", dataArr)
+//         if (dataArr && dataArr.length > 0) {
+//             console.log("From cache...");
+//             data = dataArr;
+//         } else {
+//             console.log("From db")
+//             let whereCondition;
+//             if (Object.keys(paramData).length === 1 || Object.keys(paramData).length === 0) {
+//                 if (paramData.id) {
+//                     whereCondition = { id: { [Op.substring]: Number(paramData.id) } };
+//                 } else if (paramData.name) {
+//                     whereCondition = { name: { [Op.substring]: paramData.name } };
+//                 } else if (body) {
+//                     whereCondition = { age: { [Op.between]: [bodyData.start, bodyData.end] } };
+//                 }
+//             } else if (Object.keys(paramData).length === 3) {
+//                 whereCondition = { id: Number(paramData.id), name: { [Op.substring]: paramData.name }, age: Number(paramData.age) };
+//             } else if ((Object.keys(paramData).length === 2 || Object.keys(paramData).length === 1) && !paramData.id) {
+//                 whereCondition = { name: { [Op.substring]: paramData.name }, age: { [Op.between]: [bodyData.start, bodyData.end] } }
+//             }
+//             data = await redisData.findAll({ where: whereCondition });
+//             for (let i = 0; i < data.length; i++) {
+//                 // key = `#id:${data[i].id}#name:${data[i].name}#age:${data[i].age}`
+//                 key = `${data[i].id}-${data[i].name}-${data[i].age}`
+//                 await redisClient.set(key, JSON.stringify(data));
+//             }
+
+//         }
+//         response.Response = data;
+//         res.status(200).json(response)
+//     } catch (err) {
+//         error.Message = err.message
+//         res.status(400).json(error)
+//     }
+// }
+const filteringData = async (req, res) => {
     try {
-        //         let key, id, name, age, data;
-        //         let cacheKeys = await redisClient.key('*')
-        //         console.log(cacheKeys)
-
-        //         data = await redisData.findAll({});
-        //         data.map((single) => {
-        //             id = JSON.stringify(single.id);
-        //             name = single.name;
-        //             age = JSON.stringify(single.age);
-        //             key = `#id:${id}#name:${name}#age:${age}`;
-        //             redisClient.set(key, JSON.stringify(single))
-        //         })
-
-
-        // let key, data, dataValue, cacheData;
-        // let dummy, dummyKey;
-        // const common = req.query;
-        // if (common.id) {
-        //     dataValue = common.id
-        //     key = `#id:${dataValue}`
-
-        // } else if (common.name) {
-        //     console.log(typeof common.name)
-        //     dataValue = common.name
-        //     key = `#name:${dataValue}`;
-
-        // }
-        // cacheData = JSON.parse(await redisClient.get(key))
-        // dummyKey = await redisClient.keys(`#name:*${req.query.name}*`)
-        // console.log(dummyKey)
-        // console.log(await redisClient.get(dummyKey[1]))
-        // if (cacheData) {
-        //     console.log("From Cache...")
-        //     data = cacheData;
-
-        // } else {
-        //     console.log("From DB...")
-        //     if (common.id) {
-        //         data = await redisData.findOne({ where: { id: dataValue } })
-        //         redisClient.set(key, JSON.stringify(data))
-        //     } else if (common.name) {
-        //         data = await redisData.findOne({ where: { name: dataValue } })
-        //         redisClient.set(key, JSON.stringify(data))
-        //     }
-
-        // }
-
-        //         response.Response = data;
-        //         res.status(200).json(response)
-    } catch (err) {
-        //         error.Message = err.message
-        //         res.status(400).json(error)
-    }
-}
-
-const getOneData = async (req, res) => {
-    try {
-        let paramData = req.query;
-        let bodyData = req.body;
-        let data, key, dataArr;
-        if (Object.keys(bodyData).length === 0) {
-            if (paramData.name || paramData.id) {
-                console.log("Goinng single..")
-                dataArr = await searchBySingleData(paramData, bodyData);
-            }
-        } else if (Object.keys(bodyData).length !== 0) {
-            if (Object.keys(paramData).length === 0) {
-                console.log("Only body")
-                dataArr = await searchBySingleData(paramData, bodyData);
-            } else {
-                console.log("Body & param")
-                dataArr = await searchByTwoParameter(paramData, bodyData);
-            }
-        }
-
-        console.log("33333", dataArr)
-        if (dataArr && dataArr.length > 0) {
-            console.log("From cache...");
-            data = dataArr;
+        const payload = req.body;
+        console.log("payload -->", Object.keys(payload).length)
+        let data, filteredData;
+        filteredData = await filterByprovidedData(payload);
+        if (filteredData) {
+            console.log("Data from cache...");
+            data = filteredData;
         } else {
-            console.log("From db")
-            let whereCondition;
-            if (Object.keys(paramData).length === 1 || Object.keys(paramData).length === 0) {
-                if (paramData.id) {
-                    whereCondition = { id: { [Op.substring]: Number(paramData.id) } };
-                } else if (paramData.name) {
-                    whereCondition = { name: { [Op.substring]: paramData.name } };
-                } else if (body) {
-                    whereCondition = { age: { [Op.between]: [bodyData.start, bodyData.end] } };
-                }
-            } else if (Object.keys(paramData).length === 3) {
-                whereCondition = { id: Number(paramData.id), name: { [Op.substring]: paramData.name }, age: Number(paramData.age) }
-            } else if ((Object.keys(paramData).length === 2 || Object.keys(paramData).length === 1) && !paramData.id) {
-                whereCondition = { name: { [Op.substring]: paramData.name }, age: { [Op.between]: [bodyData.start, bodyData.end] } }
-            }
-            data = await redisData.findAll({ where: whereCondition });
-            for (let i = 0; i < data.length; i++) {
-                key = `#id:${data[i].id}#name:${data[i].name}#age:${data[i].age}`
-                await redisClient.set(key, JSON.stringify(data));
-            }
-
+            console.log("Data from Database...");
+            data = await dataFromDB(payload);
         }
+
         response.Response = data;
         res.status(200).json(response)
+
     } catch (err) {
         error.Message = err.message
         res.status(400).json(error)
     }
 }
 
-const searchBySingleData = async (query, body) => {
+const dataFromDB = async (body) => {
     try {
-        let arr = [];
-        let keysData, parseData;
-        if (Object.keys(body).length === 0) {
-            if (query.id) {
-                keysData = await redisClient.keys(`*id:${query.id}*`);
-            } else if (query.name) {
-                keysData = await redisClient.keys(`*${query.name}*`);
-            }
-            for (let i = 0; i < keysData.length; i++) {
-                arr.push(JSON.parse(await redisClient.get(keysData[i])));
-            }
-        } else {
-            keysData = await redisClient.keys(`*`);
-            for (let i = 0; i < keysData.length; i++) {
-                parseData = JSON.parse(await redisClient.get(keysData[i]))
-                if (parseData.age >= body.start && parseData.age <= body.end) {
-                    arr.push(parseData)
+        let whereCondition;
+        const { id, name, minAge, maxAge } = body;
+        if (Object.keys(body).length > 0) {
+            if ((!minAge && !maxAge) && (id || name)) {
+                console.log("Age is not present ...")
+                if (id && !name) {
+                    console.log("Only Id is present..")
+                    whereCondition = { id: { [Op.substring]: id } };
+                } else if (name && !id) {
+                    console.log("Only name is present..")
+                    whereCondition = { name: { [Op.substring]: name } };
+                } else if (name && id) {
+                    console.log("Only Id  & Name are  present..")
+                    whereCondition = { id: { [Op.substring]: id }, name: { [Op.substring]: name } };
                 }
             }
+            if (minAge && maxAge) {
+                if (!id && !name && minAge && maxAge) {
+                    console.log("Only age is present..")
+                    whereCondition = { age: { [Op.between]: [minAge, maxAge] } };
+                }
+                if (id && !name && minAge && maxAge) {
+                    console.log("Only Id & age are present..")
+                    whereCondition = { id: { [Op.substring]: id }, age: { [Op.between]: [minAge, maxAge] } }
+                }
+                if (!id && name && minAge && maxAge) {
+                    console.log('Only age & name are present..')
+                    whereCondition = { name: { [Op.substring]: name }, age: { [Op.between]: [minAge, maxAge] } };
+                }
+                if (id && name && minAge && maxAge) {
+                    console.log('name, age  & id are present ...')
+                    whereCondition = { id: Number(paramData.id), name: { [Op.substring]: paramData.name }, age: Number(paramData.age) };
+                }
+
+            }
+        } else {
+            console.log("payload is not present ..")
+            whereCondition = {};
         }
-        return arr
+        const data = await redisData.findAll({ where: whereCondition });
+        console.log("Fetched data from database .. ", data)
+        for (let i = 0; i < data.length; i++) {
+            key = `${data[i].id}-${data[i].name}-${data[i].age}`
+            await redisClient.set(key, JSON.stringify(data[i]));
+        }
+        return DbArr;
+
     } catch (err) {
-        console.log("Error ::", err.message)
+        console.log("Error in dataFromDb --> ", err.message)
         return err;
     }
 }
 
 
-
-
-
-const searchByTwoParameter = async (query, body) => {
+const filterByprovidedData = async (body) => {
     try {
-        let arr = [];
-        let keysData, parseData;
-        if (query.id) {
-            keysData = await redisClient.keys(`*id:${query.id}*`);
-            for (let i = 0; i < keysData.length; i++) {
-                parseData = JSON.parse(await redisClient.get(keysData[i]))
-                arr.push(parseData);
-            }
-        } else if (!query.id && (query.name && body)) {
-            console.log("TWO name & age --->")
-            keysData = await redisClient.keys(`*${query.name}*`)
-            console.log("kkkk", keysData)
-            for (let i = 0; i < keysData.length; i++) {
-                parseData = JSON.parse(await redisClient.get(keysData[i]));
-                console.log(parseData)
-                if (parseData.age >= body.start && parseData.age <= body.end) {
-                    arr.push(parseData)
+        let keysArr, jsonData, resultArr = [];
+        const { id, name, minAge, maxAge } = body;
+        if (Object.keys(body).length > 0) {
+            if ((!minAge && !maxAge) && (id || name)) {
+                console.log("Age is not present ...")
+                if (id && !name) {
+                    console.log("Only Id is present..")
+                    keysArr = await redisClient.keys(`${body.id}*`);
+                } else if (name && !id) {
+                    console.log("Only name is present..")
+                    keysArr = await redisClient.keys(`*${name}*`);
+                } else {
+                    console.log("Only Id  & Name are  present..")
+                    keysArr = await redisClient.keys(`${id}*${name}*`);
+                    console.log("id && name ---->", keysArr);
                 }
-
+                for (let i = 0; i < keysArr.length; i++) {
+                    jsonData = JSON.parse(await redisClient.get(keysArr[i]));
+                    resultArr.push(jsonData);
+                }
+                console.log("Result in filter---> ", resultArr)
             }
+            if (minAge && maxAge) {
+                if (!id && !name && minAge && maxAge) {
+                    console.log("Only age is present..")
+                    keysArr = await redisClient.keys('*');
+                }
+                if (id && !name && minAge && maxAge) {
+                    console.log("Only Id & age are present..")
+                    keysArr = await redisClient.keys(`${id}*`);
+                }
+                if (!id && name && minAge && maxAge) {
+                    console.log('Only age & name are present..')
+                    keysArr = await redisClient.keys(`*${name}*`);
+                }
+                if (id && name && minAge && maxAge) {
+                    console.log('name, age  & id are present ...')
+                    keysArr = await redisClient.keys(`${id}*${name}*`);
+                }
+                console.log("All Keys are --->", keysArr)
+                for (let i = 0; i < keysArr.length; i++) {
+                    jsonData = JSON.parse(await redisClient.get(keysArr[i]));
+                    if (jsonData.age >= minAge && jsonData.age <= maxAge) {
+                        resultArr.push(jsonData);
+                    }
+                }
+            }
+        } else {
+            console.log("payload is not present ..")
+            keysArr = await redisClient.keys('*');
+            console.log("Empty payLoad --> ", keysArr);
+            for (let i = 0; i < keysArr.length; i++) {
+                resultArr.push(JSON.parse(await redisClient.get(keysArr[i])));
+            }
+
         }
-        console.log("arr----->", arr)
-        return arr;
+        return resultArr;
     } catch (err) {
-        console.log("Error :: ", err)
-        return err;
+        console.log("Error in filterByprovidedData Function :: ", err)
     }
 }
 const resetting = async () => {
@@ -268,10 +290,9 @@ const resetting = async () => {
         await redisClient.flushAll();
         const data = await redisData.findAll({});
         for (let i = 0; i < data.length; i++) {
-            key = `#id:${data[i].id}#name:${data[i].name}#age:${data[i].age}`;
+            key = `${data[i].id}-${data[i].name}-${data[i].age}`
             await redisClient.set(key, JSON.stringify(data[i]));
         }
-
     } catch (err) {
         console.log(err)
     }
@@ -280,7 +301,7 @@ module.exports = {
     postData,
     deleteData,
     updateData,
-    getAllData,
-    getOneData,
-    resetting
+    //getOneData,
+    resetting,
+    filteringData
 }

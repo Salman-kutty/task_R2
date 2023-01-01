@@ -21,6 +21,6 @@ app.post("/postData", redisCtrl.postData);
 app.delete("/delete/:id", redisCtrl.deleteData);
 app.put("/update/:id", redisCtrl.updateData);
 //app.get("/allData", redisCtrl.getAllData);
-app.get("/oneData", redisCtrl.getOneData)
+app.get("/filterData", redisCtrl.filteringData)
 
 app.listen(port, () => console.log(`Server is running at port number : ${port}`))
