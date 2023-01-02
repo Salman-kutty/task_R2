@@ -18,7 +18,7 @@ run()
 
 
 app.post("/postData", redisCtrl.postData);
-app.delete("/delete/:id", redisCtrl.deleteData);
+app.delete("/delete", redisCtrl.deleteData);
 app.put("/update/:id", redisCtrl.updateData);
 //app.get("/allData", redisCtrl.getAllData);
 app.get("/filterData", redisCtrl.filteringData)
