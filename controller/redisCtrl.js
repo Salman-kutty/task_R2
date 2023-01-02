@@ -212,7 +212,7 @@ const dataFromDB = async (body) => {
             key = `${data[i].id}-${data[i].name}-${data[i].age}`
             await redisClient.set(key, JSON.stringify(data[i]));
         }
-        return DbArr;
+        return data;
 
     } catch (err) {
         console.log("Error in dataFromDb --> ", err.message)
