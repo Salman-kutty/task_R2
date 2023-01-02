@@ -198,7 +198,7 @@ const dataFromDB = async (body) => {
                 }
                 if (id && name && minAge && maxAge) {
                     console.log('name, age  & id are present ...')
-                    whereCondition = { id: Number(paramData.id), name: { [Op.substring]: paramData.name }, age: Number(paramData.age) };
+                    whereCondition = { id: { [Op.substring]: id }, name: { [Op.substring]: name }, age: { [Op.between]: [minAge, maxAge] } };
                 }
 
             }
